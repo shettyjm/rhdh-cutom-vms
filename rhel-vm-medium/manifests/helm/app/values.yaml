@@ -1,7 +1,7 @@
 cluster:
   # The base domain of your OpenShift cluster.
   # This is usually the part after 'apps.' in your cluster's public URL.
-  domain: "cluster-67tqp.dynamic.redhatworkshops.io" 
+  domain: "cluster-67tqp.dynamic.yourdomain.io" 
   # EXAMPLE: REPLACE WITH YOUR ACTUAL CLUSTER DOMAIN
 # Default values for tomcat-vm
 # This is a YAML-formatted file.
