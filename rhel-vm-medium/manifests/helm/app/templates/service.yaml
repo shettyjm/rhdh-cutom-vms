@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}-svc
+  # Ensure the service is created in the same namespace as the VMs
+  namespace: {{ .Values.app.namespace }} 
+  labels:
+    # Use the common application label for easy identification
+    app.kubernetes.io/name: {{ .Values.app.selector_app_name }}
+    {{- include "vm.labels" . | nindent 4 }}
+    app: {{ $.Values.app.name }}-webserver
+spec:
+  # CRITICAL: Selector MUST match the label on the VirtualMachines
+  # for vm specific generation, parameterize this one.
+  # hard coded tp app: webserver so that a cluster of vms can be exposed as a single service
+  selector:
+    app: {{ $.Values.app.name }}-webserver
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80 # The port the Service exposes internally (Cluster IP)
+      targetPort: 80 # The port the web server listens on inside the VM (httpd)
+  # ClusterIP is sufficient for internal routing, as the Route will handle external exposure.
+  clusterIP: None

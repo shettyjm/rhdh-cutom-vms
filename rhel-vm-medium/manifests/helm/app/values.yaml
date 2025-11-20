@@ -1,0 +1,40 @@
+cluster:
+  # The base domain of your OpenShift cluster.
+  # This is usually the part after 'apps.' in your cluster's public URL.
+  domain: "cluster-67tqp.dynamic.redhatworkshops.io" 
+  # EXAMPLE: REPLACE WITH YOUR ACTUAL CLUSTER DOMAIN
+# Default values for tomcat-vm
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+app:
+  name: ${{values.component_id}}
+  namespace: ${{values.namespace}}
+  cluster: ${{values.cluster}}
+  vm_count: ${{values.vm_count}}
+  # Add the RHEL version value here
+  
+git:
+  branch: main
+  repo: ${{values.source_repository}}
+  org: ${{values.org}}
+  name: ${{values.repository_name}}
+  host: ${{values.git_host}}
+
+nameOverride: ""
+fullnameOverride: ""
+
+
+targetEnvironment: dev
+env: []
+
+
+resources:
+  requests:
+    memory: 4Gi
+    cpu: 2
+vm:
+  nodeSelector: {}
+  tolerations: []
+
+
+# staticIP: "10.10.10.31/24"

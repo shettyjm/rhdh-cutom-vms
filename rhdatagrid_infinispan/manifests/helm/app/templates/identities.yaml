@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: connect-secret
+type: Opaque
+data:
+  identities.yaml: IGNyZWRlbnRpYWxzOgogICAgLSB1c2VybmFtZTogdXNlcjEKICAgICAgcGFzc3dvcmQ6IG9wZW5zaGlmdCEzNDE1QAoK

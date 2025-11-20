@@ -1,0 +1,47 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.component_id}}
+  {%- if values.description %}
+  description: ${{values.description}}
+  {%- endif %}
+  annotations:
+    argocd/app-name: ${{values.component_id}}
+    # Make sure the cluster-argocd is queried, and not the "default" tssc-gitops
+    argocd/instance-name: cluster-argocd
+    backstage.io/kubernetes-id: ${{values.component_id}}
+    backstage.io/kubernetes-namespace: ${{values.component_id}}
+    janus-idp.io/tekton: ${{values.component_id}}
+    backstage.io/techdocs-ref: url:https://${{values.host}}/${{values.destination}}
+    backstage.io/source-location: url:https://${{values.host}}/${{values.destination}}
+    gitlab.com/project-slug: ${{values.destination}}
+  tags:
+    - project
+    - workshop  
+  links:
+    - url: https://console-openshift-console.${{values.cluster_id}}/k8s/cluster/projects/${{values.component_id}}
+      title: OpenShift Project Details
+      icon: dashboard
+    - url: https://console-openshift-console.${{values.cluster_id}}/k8s/ns/${{values.component_id}}/networkpolicies
+      title: Network Policies Defined
+      icon: dashboard
+    - url: https://console-openshift-console.${{values.cluster_id}}/dev-monitoring/ns/${{values.component_id}}?dashboard=dashboard-k8s-resources-namespace
+      title: Compute Resources OpenShift Project (Pods)
+      icon: dashboard
+spec:
+  type: project
+  lifecycle: development
+  owner: tssc
+  system: workshop-system-${{values.component_id}}
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: workshop-system-${{values.component_id}}
+  tags:
+    - backstage
+    - janus-idp
+    - openshift
+    - workshop
+spec:
+  owner: tssc

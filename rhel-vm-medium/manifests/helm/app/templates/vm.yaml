@@ -1,0 +1,129 @@
+{{- range $i := until (int .Values.app.vm_count) }}
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{ $.Values.app.name }}-vm-{{ $i }}
+  # The VM will be created in the target namespace of the Helm release
+  namespace: {{ $.Values.app.namespace }} 
+  labels:
+    # Common selector for Service/Route
+    app.kubernetes.io/name: fedora-web-app
+    # Unique name for the instance
+    app: {{ $.Values.app.name }}-vm-{{ $i }} 
+    {{- include "vm.labels" $ | nindent 4 }}
+    {{- include "backstage.labels" $ | nindent 4 }}
+spec:
+  # The runStrategy ensures the VM starts automatically
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: {{ $.Values.app.name }}-vm-{{ $i }}-volume
+      spec:
+        sourceRef:
+          kind: DataSource
+          # Data source references typically point to shared resources (like Fedora images)
+          name: fedora
+          namespace: openshift-virtualization-os-images
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+  template:
+    metadata:
+      labels:
+        # Common selector for Service/Route
+        app: {{ $.Values.app.name }}-webserver
+        app.kubernetes.io/name: fedora-web-app
+        kubevirt.io/domain: {{ $.Values.app.name }}-vm-{{ $i }}
+        {{- include "vm.labels" $ | nindent 8 }}
+        {{- include "backstage.labels" $ | nindent 8 }}
+        network.kubevirt.io/headlessService: headless   
+    spec:
+      domain:
+        cpu:
+          cores: 1
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+          interfaces:
+            - masquerade: {}
+              model: virtio
+              name: default
+          rng: {}
+        features:
+          smm:
+            enabled: true
+        firmware:
+          bootloader:
+            efi: {}
+        memory:
+          guest: 4Gi
+      networks:
+        - name: default
+          pod: {}
+      subdomain: headless
+      volumes:
+        - dataVolume:
+            name:  {{ $.Values.app.name }}-vm-{{ $i }}-volume
+          name: rootdisk
+        - cloudInitNoCloud:
+            # --- CUSTOM WEB SERVER INSTALLATION VIA CLOUD-INIT ---
+            userData: |
+              #cloud-config
+              user: fedora
+              password: mypasskey
+              chpasswd: { expire: False }
+              packages:
+                - httpd
+                - firewalld # Ensure firewall package is installed
+              runcmd:
+                - systemctl enable httpd
+                - systemctl start httpd
+                - systemctl enable firewalld || true
+                - systemctl start firewalld || true
+                - firewall-cmd --permanent --add-service=http || true
+                - firewall-cmd --reload || true
+                
+                # --- CORRECTED DYNAMIC HTML GENERATION ---
+                - |
+                  # Get the VM's name from its runtime hostname
+                  VM_NAME=$(hostname)
+                  
+                  # Use sed to safely replace a placeholder string in the HTML
+                  # Since sed isn't guaranteed to be installed, we will use a single echo command.
+                  
+                  # Create the HTML using echo/printf, injecting the VM_NAME variable directly
+                  # We use single quotes for the echo string to prevent the shell from
+                  # prematurely expanding the HTML variable content.
+                  printf '<!DOCTYPE html>\n<html>\n<head><title>Static Fedora Webserver Test</title></head>\n<body>\n<h1>Static VM Success!</h1>\n<p>This single VM was deployed directly using static YAML.</p>\n<p>VM Name: <strong>%s</strong></p>\n</body>\n</html>' "$VM_NAME" > /var/www/html/index.html
+                # ------------------------------------
+              # runcmd:
+              #   - systemctl enable httpd
+              #   - systemctl start httpd
+              #   - systemctl enable firewalld || true # Enable if installed
+              #   - systemctl start firewalld || true   # Start if installed
+              #   # Open HTTP port 80 (must be done if firewalld is active)
+              #   - firewall-cmd --permanent --add-service=http || true
+              #   - firewall-cmd --reload || true
+              # write_files:
+              #   - path: /var/www/html/index.html
+              #     content: |
+              #       <!DOCTYPE html>
+              #       <html>
+              #       <head><title>Welcome to Helm Deployed Fedora Webserver</title></head>
+              #       <body>
+              #         <h1>Success!</h1>
+              #         <p>This web server was successfully deployed via Helm chart.</p>
+              #       </body>
+              #       </html>
+            # -----------------------------------------------------
+          name: cloudinitdisk
+{{- end }}

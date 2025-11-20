@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: software-templates
+  description: A collection of Backstage templates for rhads
+spec:
+  type: url
+  targets:
+    - scaffolder-templates/namespace-medium/template.yaml 
+    - scaffolder-templates/rhdatagrid_infinispan/template.yaml     
+    - scaffolder-templates/rhel-vm-medium/template.yaml  

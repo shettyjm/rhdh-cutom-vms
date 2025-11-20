@@ -1,0 +1,9 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: rhads-entities
+  description: A collection of RHADS templates
+spec:
+  targets:
+    - ./showcase-templates.yaml
+    - ./component-locations.yaml

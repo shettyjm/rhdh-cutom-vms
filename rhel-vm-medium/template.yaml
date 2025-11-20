@@ -1,0 +1,131 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: self-service-vms-webserver-cluster-template
+  title: Custom WebServer VM Medium Template for Pluto App
+  description: creates a WebServer VM Medium Custom vms for Pluto App
+  tags:
+    - vm
+    - workshop
+    - self-service
+    - pluto
+    - webserver
+spec:
+  owner: tssc
+  type: VM
+  parameters:
+    - title: Provide Information for the VM
+      required:
+        - component_id
+        - namespace
+        - vm_count
+        # UPDATE: Add other required parameters here
+      properties:
+        # UPDATE: Add new properties here
+        component_id:
+          title: Name
+          type: string
+          description: Unique name of the component
+          default: legacy-vm
+          ui:field: EntityNamePicker
+          maxLength: 23
+        namespace:
+          title: Namespace
+          type: string
+          description: Namespace of the component
+          default: legacy-vm
+          ui:field: EntityNamePicker
+          maxLength: 23
+        vm_count:
+          title: Number of VMs
+          type: integer
+          description: Number of VMs to create
+          default: 1
+          minimum: 1
+          maximum: 10
+  steps:
+    - id: fetch-provision-data
+      name: Fetch Provision Data
+      action: catalog:fetch
+      input:
+        entityRef: component:default/provisioning-data
+    - id: templateSource
+      name: Generating the source code component
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: ./source
+        values:
+          owner: rhdh
+          namespace: ${{parameters.namespace}}
+          component_id: ${{parameters.component_id}}
+          cluster_id: ${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}
+          host: gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}
+          repoName: ${{parameters.component_id}}
+          user_id: rhdh
+          destination: rhdh/${{ parameters.component_id }}
+          # UPDATE: Add new source values here
+          
+    - id: publishSource
+      name: Publish
+      action: publish:gitlab
+      input:
+        sourcePath: ./source
+        repoUrl: 'gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}?owner=rhdh&repo=${{parameters.component_id}}'
+        repoVisibility: public
+  
+    - id: registerSource
+      name: Registering the Source Code Component
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{steps.publishSource.output.repoContentsUrl}}
+        catalogInfoPath: /catalog-info.yaml
+
+    - id: templateGitops
+      name: Generating the deployment resources and artifacts
+      action: fetch:template
+      input:
+        url: ./manifests
+        copyWithoutTemplating: []
+        values:
+          component_id: ${{parameters.component_id}}
+          description: ${{parameters.description}}
+          destination:  https://gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}/rhdh/${{parameters.component_id}}-gitops.git
+          source_repository: https://gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}/rhdh/${{parameters.component_id}}.git
+          repository_name: ${{parameters.component_id}}
+          git_host: gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}
+          cluster: ${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}
+          namespace: ${{parameters.namespace}}
+          user_id: rhdh
+          vm_count: ${{parameters.vm_count}}
+          # UPDATE: Add new Gitops values here
+
+        targetPath: ./tenant-gitops
+    - id: publishGitops
+      name: Publishing to Deployment Resource Repository
+      action: publish:gitlab
+      input:
+        repoUrl: 'gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}?owner=rhdh&repo=${{parameters.component_id}}-gitops'
+        title: gitops resources for ${{parameters.namespace}}-gitops
+        description: gitops resources for ${{parameters.namespace}}-gitops
+        sourcePath: ./tenant-gitops
+        defaultBranch: main
+        protectDefaultBranch: false
+        repoVisibility: public
+    - id: createArgoResources
+      name: Create ArgoCD Resources
+      action: argocd:create-resources
+      input:
+        appName: ${{parameters.component_id}}-gitops
+        argoInstance: cluster-argocd
+        namespace: openshift-gitops
+        repoUrl: https://gitlab-gitlab.${{ steps["fetch-provision-data"].output.entity.metadata.labels["ocp-apps-domain"] }}/rhdh/${{parameters.component_id}}-gitops.git
+        path: 'argocd/'
+  output:
+    links:
+      - title: Source Code Repository
+        url: ${{steps.publishSource.output.remoteUrl}}
+      - title: Open Component in catalog
+        icon: catalog
+        entityRef: ${{steps.registerSource.output.entityRef}}
+

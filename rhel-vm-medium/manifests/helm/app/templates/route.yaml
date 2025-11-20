@@ -1,0 +1,18 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.app.name }}-route
+  # Ensure the route is created in the same namespace as the Service
+  namespace: {{ .Values.app.namespace }} 
+  labels:
+    app.kubernetes.io/name: {{ .Values.app.selector_app_name }}
+    {{- include "vm.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.app.route_host | default (printf "%s-webserver.apps.%s" .Values.app.name .Values.cluster.domain) }}
+  to:
+    kind: Service
+    name: {{ .Values.app.name }}-svc # Points to the Headless Service
+    weight: 100
+  port:
+    targetPort: http # Targets the port named 'http' in the Service (port 80)
+  # TLS section is omitted to serve simple HTTP for curl testing

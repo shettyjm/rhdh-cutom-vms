@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: provisioning-data
+  description: Provisioning data from rhads
+  labels:
+    ocp-apps-domain: {{ ocp_apps_domain }}
+spec:
+  type: service
+  lifecycle: development
+  owner: user
